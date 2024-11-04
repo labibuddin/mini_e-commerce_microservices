@@ -2,12 +2,14 @@ package org.example.service;
 
 import org.example.entity.Product;
 import org.example.exception.ProductOutOfStockException;
+import org.example.event.ReduceStockEvent;
 import org.example.model.CreateProductRequest;
 import org.example.model.ProductResponse;
 import org.example.model.UpdateProductQuantity;
 import org.example.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -48,6 +50,12 @@ public class ProductService {
         List<Product> products = productRepository.findAll();
         return products.stream().map(this::toProductResponse).toList();
 
+    }
+
+    @KafkaListener(topics = "reduce-stock-event", groupId = "product-group")
+    public void handleReduceStockEvent(ReduceStockEvent event) {
+        UpdateProductQuantity updateQuantity = new UpdateProductQuantity(event.getQuantity());
+        this.reduceStock(event.getProductId(), updateQuantity);
     }
 
     @Transactional
